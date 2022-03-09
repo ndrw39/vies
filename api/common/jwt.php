@@ -1,15 +1,18 @@
 <?php
 
+namespace Api\Common;
+
 use \Firebase\JWT\JWT as FB_JWT;
 use \Firebase\JWT\Key as Key;
 
 class Jwt
 {
-    private static string $key = 'secret_key';
+    private static string $key = 'KCe31dn2JZ8GaveHQWln';
     private static string $iss = 'eurodk.com';
     private static string $aud = 'eurodk.com';
+    private static string $alg = 'HS384';
 
-    public static function encodeByData(array $data): ?string
+    public static function encodeUser(array $data): ?string
     {
         $dataFields = ['id', 'firstname', 'lastname', 'email'];
 
@@ -32,9 +35,13 @@ class Jwt
         return FB_JWT::encode($tokenData, base64_encode(self::$key), 'HS384');
     }
 
-    public static function decode(string $token): object
+    public static function decode(?string $token): ?object
     {
-        return FB_JWT::decode($token, new Key(base64_encode(self::$key), 'HS384'));
+        if (!isset($token)) {
+            return null;
+        }
+
+        return FB_JWT::decode($token, new Key(base64_encode(self::$key), self::$alg));
     }
 }
 

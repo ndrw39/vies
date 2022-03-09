@@ -7,87 +7,100 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Check Vat</title>
     <script src="https://code.jquery.com/jquery-3.6.0.js"
-            integrity="sha256-H+K7U5CnXl1h5ywQfKtSj8PCmoN9aaq30gDh27Xc0jk="
-            crossorigin="anonymous"></script>
+            integrity="sha256-H+K7U5CnXl1h5ywQfKtSj8PCmoN9aaq30gDh27Xc0jk=" crossorigin="anonymous"></script>
 </head>
 <body>
-<form action="/api/login.php" method="post" id="login">
+<form action="/api/index.php?method=login" method="post" id="login">
     <label for="email">Email</label>
     <input type="text" name="email" id="email" required>
     <label for="password">Password</label>
     <input type="password" name="password" id="password" required>
     <button type="submit">Send</button>
-    <div class="error_message" style="display: none">No valid data</div>
+    <div class="message" style="display: none"></div>
 </form>
 
-<form action="/api/checkVat.php" method="post" id="vatCheck" style="display: none">
+<form action="/api/index.php?method=vat" method="post" id="vatCheck" style="display: none">
     <label for="countryCode">Country Code</label>
     <input type="text" name="countryCode" id="countryCode" required>
     <label for="vatNumber">Vat</label>
     <input type="text" name="vatNumber" id="vatNumber" required>
     <button type="submit">Send</button>
-    <div class="error_message">The VAT number you are requesting is not valid. Either the Number is not active or not
-        allocated. Please double-check that you are entering the right VAT Number.
-    </div>
-    <div class="success_message">Your VAT Number has been successfully validated. Your company legal data was updated
-        according to the VIES database.
-    </div>
+    <div class="message"></div>
 </form>
 
 <script>
     let $loginForm = $('#login');
     let $vatForm = $('#vatCheck');
 
+    let ajax = function (obj) {
+        return new Promise(function (resolve, error) {
+            $.ajax({
+                method: obj.method || 'GET',
+                url: obj.url,
+                data: obj.data,
+                dataType: 'json',
+            }).then(function (resp) {
+                resolve(resp);
+            }).catch(function (resp) {
+                error(resp.responseJSON);
+            })
+        });
+    }
+
     $loginForm.on('submit', function (e) {
         e.preventDefault();
         let data = {
-            method: 'post',
-            url: '/api/login.php',
-            values: $(this).serialize()
-        }
+            method: $(this).attr('method'),
+            url: $(this).attr('action'),
+            data: $(this).serialize()
+        }, $message_box = $(this).find('.message');
 
-        $.ajax({
-            method: data.method,
-            url: data.url,
-            data: data.values,
-            dataType: 'json'
-        }).done(function (resp) {
-            if (resp.success !== true || !resp.jwt) {
-                $('#login .error_message').show();
+        $message_box.hide();
+        ajax(data).then(function (response) {
+            if (response.success && response.jwt) {
+                localStorage.setItem('jwt', response.jwt);
+                $loginForm.hide();
+                $vatForm.show();
                 return;
             }
-
-            localStorage.setItem('jwt', resp.jwt);
-            $('#login').hide();
-            $('#vatCheck').show();
+            $message_box.show();
+            $message_box.text('undefined error');
+        }).catch(function (response) {
+            console.log(response);
+            if (!response.error) {
+                return;
+            }
+            $message_box.show();
+            $message_box.text(response.error);
         })
     });
 
     $vatForm.on('submit', function (e) {
         e.preventDefault();
+
         let data = {
-            method: 'post',
-            url: '/api/checkVat.php',
-            values: {
-                countryCode: $('#countryCode').val(),
-                vatNumber: $('#vatNumber').val(),
+            method: $(this).attr('method'),
+            url: $(this).attr('action'),
+            data: {
+                countryCode: $(this).find('#countryCode').val(),
+                vatNumber: $(this).find('#vatNumber').val(),
                 jwt: localStorage.getItem('jwt')
             }
-        }
+        }, $message_box = $(this).find('.message');
 
-        $.ajax({
-            method: data.method,
-            url: data.url,
-            data: data.values,
-            dataType: 'json'
-        }).done(function (resp) {
-            $('#vatCheck .error_message').hide();
-            $('#vatCheck .success_message').hide();
-            if (resp.success === true && resp.valid === true) {
-                $('#vatCheck .success_message').show();
+        $message_box.hide();
+
+        ajax(data).then(function (response) {
+            if (response.text) {
+                $message_box.show();
+                $message_box.text(response.text);
+            }
+        }).catch(function (response) {
+            if (!response.error) {
                 return;
             }
-            $('#vatCheck .error_message').show();
+            $message_box.show();
+            $message_box.text(response.error);
         })
     });
 </script>

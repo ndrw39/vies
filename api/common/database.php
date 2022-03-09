@@ -1,5 +1,10 @@
 <?php
 
+namespace Api\Common;
+
+use PDO;
+use PDOException;
+
 class Database
 {
     private static string $host = "localhost";
@@ -8,7 +13,7 @@ class Database
     private static string $password = "";
     public static ?PDO $connection = null;
 
-    public static function getConnection(): PDO
+    public static function connect(): PDO
     {
         if (isset(self::$connection)) {
             return self::$connection;
